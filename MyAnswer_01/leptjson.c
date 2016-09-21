@@ -1,12 +1,23 @@
 #include "leptjson.h"
 #include <assert.h>  /* assert() */
-#include <stdlib.h>  /* NULL */
+#include <stdlib.h>  /* NULL, strtod() */
 
 #define EXPECT(c, ch)       do { assert(*c->json == (ch)); c->json++; } while(0)
 
 typedef struct {
     const char* json;
 }lept_context;
+
+static int lept_parse_number(lept_context* c, lept_value* v){
+    char* end;
+    /*\TODO validate number*/
+    v->n = strtod(c->json, &end);
+    if(c->json == end)
+        return LEPT_PARSE_INVALID_VALUE;
+    c->json = end;
+    v->type = LEPT_NUMBER;
+    return LEPT_PARSE_OK;
+}
 
 static void lept_parse_whitespace(lept_context* c) {
     const char *p = c->json;
@@ -54,10 +65,10 @@ static int lept_parse_false(lept_context* c, lept_value* v){
 static int lept_parse_value(lept_context* c, lept_value* v) {
     switch (*c->json) {
         case 'n':  return lept_parse_null(c, v);
-        case '\0': return LEPT_PARSE_EXPECT_VALUE;
         case 't': return lept_parse_true(c,v);
         case 'f': return lept_parse_false(c, v);
-        default:   return LEPT_PARSE_INVALID_VALUE;
+        default:   return lept_parse_number(c, v);
+        case '\0': return LEPT_PARSE_EXPECT_VALUE;
     }
 }
 
@@ -82,7 +93,13 @@ lept_type lept_get_type(const lept_value* v) {
 }
 
 
-//另外一种解析方法，不要在lept_parse_null里写，直接在lept_parse里更改（这种方式更好，因为原来的只检测了前两部分）
+double lept_get_number(const lept_value* v){
+    assert(v != NULL && v->type == LEPT_NUMBER);
+    return v->n;
+}
+
+
+//另外一种解析方法，不要在lept_parse_null里写，直接在lept_parse里更改（这种方式更好，因为原来的只检测了前两部分��?
 //代码如下
 /*
 int lept_parse(lept_value* v, const char* json) {
